@@ -1,56 +1,82 @@
-document.getElementById('search-btn').addEventListener('click', function() {
-    var city = document.getElementById('city-input').value;
+
+ 
+
+document.getElementById('search-button').addEventListener('click', function() {
+    const city = document.getElementById('city-input').value;
     fetchWeather(city);
-});
-
-function fetchWeather(city) {
-    var apiKey = 'YOUR_API_KEY'; 
-    var apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}`;
-
-    fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-            showWeather(data);
-            addToHistory(city);
-        })
-        .catch(error => {
-            console.log('Error fetching weather:', error);
-            alert('Error fetching weather. Please try again.');
-        });
-}
-
-function showWeather(data) {
-    var weatherInfo = document.getElementById('weather-info');
-    weatherInfo.innerHTML = '';
-
-    var cityName = data.name;
-    var date = new Date();
-    var dateString = date.toLocaleDateString();
-    var temperature = Math.round(data.main.temp - 273.15); 
-    var humidity = data.main.humidity;
-    var windSpeed = data.wind.speed;
-    var iconCode = data.weather[0].icon;
-    var iconUrl = `http://openweathermap.org/img/w/${iconCode}.png`;
-
-    var currentWeather = document.createElement('div');
-    currentWeather.classList.add('current-weather');
-    currentWeather.innerHTML = `
-        <h2>${cityName} (${dateString})</h2>
-        <img src="${iconUrl}" alt="Weather Icon">
-        <p>Temperature: ${temperature}°C</p>
-        <p>Humidity: ${humidity}%</p>
-        <p>Wind Speed: ${windSpeed} m/s</p>
+    saveSearch(city);
+  });
+  
+  function fetchWeather(city) {
+    const apiKey = '326495482c11dcfd2d4b92026ae9abab';
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+  
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if(data && data.coord) {
+          fetchForecast(data.coord.lat, data.coord.lon);
+          updateWeatherDisplay(data);
+        } else {
+          document.getElementById('weather-details').innerHTML = '<p>Weather data not available. Try another city.</p>';
+        }
+      })
+      .catch(error => console.error('Error:', error));
+  }
+  
+  function fetchForecast(lat, lon) {
+    const apiKey = '326495482c11dcfd2d4b92026ae9abab';
+    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+  
+    fetch(url)
+      .then(response => response.json())
+      .then(data => updateForecastDisplay(data))
+      .catch(error => console.error('Error:', error));
+  }
+  
+  function updateWeatherDisplay(data) {
+    const weatherDetails = document.getElementById('weather-details');
+    weatherDetails.innerHTML = `
+      <h3>${data.name}</h3>
+      <p>Temperature: ${data.main.temp}°C</p>
+      <p>Humidity: ${data.main.humidity}%</p>
+      <p>Wind: ${data.wind.speed} m/s</p>
     `;
-    weatherInfo.appendChild(currentWeather);
-}
-
-function addToHistory(city) {
-    var searchHistory = document.getElementById('search-history');
-    var historyItem = document.createElement('div');
-    historyItem.classList.add('history-item');
-    historyItem.textContent = city;
-    historyItem.addEventListener('click', function() {
-        fetchWeather(city);
+  }
+  
+  function updateForecastDisplay(data) {
+    const forecastContainer = document.getElementById('forecast-container');
+    forecastContainer.innerHTML = '';
+    data.list.forEach((forecast, index) => {
+      if (index % 8 === 0) {
+        const forecastDiv = document.createElement('div');
+        forecastDiv.className = 'forecast';
+        forecastDiv.innerHTML = `
+          <h4>${new Date(forecast.dt * 1000).toLocaleDateString()}</h4>
+          <img src="http://openweathermap.org/img/wn/${forecast.weather[0].icon}.png" alt="${forecast.weather[0].description}">
+          <p>Temp: ${forecast.main.temp}°C</p>
+          <p>Wind: ${forecast.wind.speed} m/s</p>
+          <p>Humidity: ${forecast.main.humidity}%</p>
+        `;
+        forecastContainer.appendChild(forecastDiv);
+      }
     });
-    searchHistory.appendChild(historyItem);
-}
+  }
+  
+  function saveSearch(city) {
+    let searches = JSON.parse(localStorage.getItem('searches')) || [];
+    if (!searches.includes(city)) {
+      searches.push(city);
+      localStorage.setItem('searches', JSON.stringify(searches));
+      displaySearchHistory();
+    }
+  }
+  
+  function displaySearchHistory() {
+    let searches = JSON.parse(localStorage.getItem('searches')) || [];
+    const searchHistory = document.getElementById('search-history');
+    searchHistory.innerHTML = searches.map(city => `<button onclick="fetchWeather('${city}')">${city}</button>`).join('');
+  }
+  
+  window.onload = displaySearchHistory;
+  
